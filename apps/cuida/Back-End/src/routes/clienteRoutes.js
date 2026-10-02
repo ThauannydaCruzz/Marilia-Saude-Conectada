@@ -1,0 +1,16 @@
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const controller = require("../controllers/clienteController");
+
+const upload = multer();
+
+router.post("/register", controller.register);
+router.post("/login", controller.login);
+
+router.get("/perfil/:id", controller.perfil);
+router.patch('/update/:id', controller.updateCliente);
+
+router.post("/upload-foto/:id", upload.single("foto"), controller.uploadFoto);
+
+module.exports = router;

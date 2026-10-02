@@ -1,0 +1,16 @@
+{
+  "name": "marilia-saude-conectada",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "install:all": "npm install --prefix apps/portal && npm install --prefix apps/cuida/Front-End && npm install --prefix apps/cuida/Back-End && npm install --prefix apps/vigia",
+    "dev:portal": "npm run dev --prefix apps/portal",
+    "dev:cuida:front": "npm run dev --prefix apps/cuida/Front-End -- --port 8081",
+    "dev:cuida:back": "npm run dev --prefix apps/cuida/Back-End",
+    "dev:vigia": "npm run dev --prefix apps/vigia -- --port 8082",
+    "dev": "concurrently -n portal,cuida-front,cuida-back,vigia -c blue,green,yellow,magenta \"npm:dev:portal\" \"npm:dev:cuida:front\" \"npm:dev:cuida:back\" \"npm:dev:vigia\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
