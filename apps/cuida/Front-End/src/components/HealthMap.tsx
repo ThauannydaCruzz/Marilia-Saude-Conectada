@@ -271,4 +271,4 @@ const HealthMap = () => {
   );
 };
 
-export default HealthMap;
+export default HealthMap;

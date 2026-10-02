@@ -178,4 +178,4 @@ export default function SidebarMap({ selectedUnit, mapInstanceRef, setSelectedUn
             </div>)}
         </div>
     )
-}
+}

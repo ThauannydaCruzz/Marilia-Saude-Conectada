@@ -243,4 +243,4 @@ export default function ItemDetailSidebarMap({ medication, onBack, selectedUnit 
             </div>
         </div>
     )
-}
+}
