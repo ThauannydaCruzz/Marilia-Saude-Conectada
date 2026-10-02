@@ -18,7 +18,7 @@ exports.enviarEmail = async ({ para, assunto, html }) => {
   }
 
   return transporter.sendMail({
-    from: `"CUIDA - Saúde Pública" <${process.env.EMAIL_USER}>`,
+    from: `"Marília Saúde Conectada - Saúde Pública" <${process.env.EMAIL_USER}>`,
     to: para,
     subject: assunto,
     html: html

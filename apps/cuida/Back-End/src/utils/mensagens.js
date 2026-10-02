@@ -10,7 +10,7 @@ const SAUDACOES = [
   'Oi, {nome}, tudo bem?',
   'Bom dia, {nome}!',          // trocado por boa tarde/noite conforme o horário
   '{nome}, temos uma boa notícia!',
-  'Olá {nome}, aqui é o CUIDA.'
+  'Olá {nome}, aqui é o Marília Saúde Conectada.'
 ];
 
 const CORPOS = [
@@ -27,8 +27,8 @@ const ORIENTACOES = [
 ];
 
 const RODAPES = [
-  'Para não receber mais este aviso, remova o favorito no app CUIDA.',
-  'Você recebeu este aviso porque favoritou este medicamento no CUIDA. Para parar, é só remover o favorito no app.'
+  'Para não receber mais este aviso, remova o favorito no app Marília Saúde Conectada.',
+  'Você recebeu este aviso porque favoritou este medicamento no Marília Saúde Conectada. Para parar, é só remover o favorito no app.'
 ];
 
 function sortear(lista, rnd = Math.random) {
