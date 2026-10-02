@@ -9,5 +9,6 @@ router.get("/disponivel", controller.disponivel);
 // Gestão (app das UBS): exige x-api-key quando NOTIFICACAO_API_KEY estiver definida.
 // O web dos cidadãos não deve chamar esta rota.
 router.post("/entrada", exigirChaveInterna, controller.entrada);
+router.post("/saida", exigirChaveInterna, controller.saida);
 
 module.exports = router;

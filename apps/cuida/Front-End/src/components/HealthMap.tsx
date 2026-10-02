@@ -151,12 +151,17 @@ const HealthMap = () => {
   useEffect(() => {
     let filtered = healthUnits;
     if (medicationSearch) {
-      filtered = filtered.filter(unit =>
-        unit.medications.some(med => 
-          med.name.toLowerCase().includes(medicationSearch.toLowerCase()) && 
-          med.quantity > 0
-        )
-      );
+      const termo = medicationSearch.toLowerCase();
+      const temOMedicamento = (unit: HealthUnit, soComEstoque: boolean) =>
+        unit.medications.some(med =>
+          med.name.toLowerCase().includes(termo) && (!soComEstoque || med.quantity > 0)
+        );
+      // Mostra onde HÁ o medicamento. Se não houver em lugar nenhum, mostra as
+      // unidades onde ele está "Em falta", para o cidadão pedir o aviso de chegada.
+      const comEstoque = filtered.filter(unit => temOMedicamento(unit, true));
+      filtered = comEstoque.length > 0
+        ? comEstoque
+        : filtered.filter(unit => temOMedicamento(unit, false));
       setMedicationSearchCount(Math.floor(Math.random() * 50) + 10);
     } else {
       setMedicationSearchCount(0);
@@ -266,4 +271,4 @@ const HealthMap = () => {
   );
 };
 
-export default HealthMap;
+export default HealthMap;

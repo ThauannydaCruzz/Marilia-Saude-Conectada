@@ -1,4 +1,4 @@
-import { Clock, Eye, MapPin, Package, Phone, X } from "lucide-react";
+import { BellRing, Clock, Eye, MapPin, Package, Phone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ItemSidebarMap from "./ItemSidebarMap";
@@ -55,6 +55,36 @@ export default function SidebarMap({ selectedUnit, mapInstanceRef, setSelectedUn
         setHiddenDetailMenu(true);
         setSelectedItemDetail(data);
     }
+
+    // Com estoque: lista normal. Zerados: seção "Em falta", onde o cidadão
+    // pede o aviso de "chegou" (é o mesmo favorito, só muda o texto).
+    const medicamentos: any[] = selectedUnit?.medications ?? [];
+    const disponiveis = medicamentos.filter((med: any) => med.quantity > 0);
+    const emFalta = medicamentos.filter((med: any) => !(med.quantity > 0));
+
+    const renderItem = (med: any) => {
+        const medIdLimpo = extractId(med.id);
+        const idFavoritoExistente = meusFavoritosMap[medIdLimpo] || null;
+
+        return (
+            <ItemSidebarMap
+                key={med.id}
+                id={med.id}
+                name={med.name}
+                dosage={med.dosage}
+                quantity={med.quantity}
+                tipo={med.tipo}
+                interests={med.interests}
+                description={med.description}
+                foto_url={med.foto_url}
+                requiresPrescription={med.requiresPrescription}
+                viewingCount={med.viewingCount}
+                unitId={selectedUnit.id}
+                initialFavoriteId={idFavoritoExistente}
+                handleDetail={handleDetailMenu}
+            />
+        );
+    };
 
     return (
         <div className="w-full md:w-1/2 lg:w-2/5 bg-background border-b md:border-r md:border-b-0 border-border z-[1000] fixed bottom-0 md:static h-[50vh] md:h-full overflow-y-auto">
@@ -115,35 +145,27 @@ export default function SidebarMap({ selectedUnit, mapInstanceRef, setSelectedUn
                         Medicamentos Disponíveis
                     </h3>
                     <div className="space-y-3">
-                        {selectedUnit.medications.filter((med: any) => med.quantity > 0).map((med: any, index: number) => {
-                        
-                        const medIdLimpo = extractId(med.id);
-                        const idFavoritoExistente = meusFavoritosMap[medIdLimpo] || null;
-
-                        return (
-                            <ItemSidebarMap
-                                key={index || med.id}
-                                id={med.id}
-                                name={med.name}
-                                dosage={med.dosage}
-                                quantity={med.quantity}
-                                tipo={med.tipo}
-                                interests={med.interests}
-                                description={med.description}
-                                foto_url={med.foto_url}
-                                
-                                // ✅ CORREÇÃO: Usamos o valor que já vem pronto do mock
-                                requiresPrescription={med.requiresPrescription} 
-                                
-                                viewingCount={med.viewingCount}
-                                unitId={selectedUnit.id}
-                                initialFavoriteId={idFavoritoExistente}
-                                handleDetail={handleDetailMenu}
-                            />
-                        );
-                        })}
+                        {disponiveis.length === 0 && (
+                            <p className="text-sm text-muted-foreground">Nenhum medicamento disponível nesta unidade no momento.</p>
+                        )}
+                        {disponiveis.map(renderItem)}
                     </div>
                 </div>
+
+                {emFalta.length > 0 && (
+                    <div>
+                        <h3 className="font-semibold text-lg mb-1 text-foreground flex items-center gap-2">
+                            <BellRing className="w-5 h-5 text-amber-600" />
+                            Em falta
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Toque em <strong>Avise-me</strong> para receber um aviso por WhatsApp e e-mail quando o medicamento chegar nesta unidade.
+                        </p>
+                        <div className="space-y-3">
+                            {emFalta.map(renderItem)}
+                        </div>
+                    </div>
+                )}
 
                 <div className="pt-4 border-t border-border">
                     <Badge 
@@ -156,4 +178,4 @@ export default function SidebarMap({ selectedUnit, mapInstanceRef, setSelectedUn
             </div>)}
         </div>
     )
-}
+}

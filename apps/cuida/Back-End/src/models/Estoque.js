@@ -131,6 +131,39 @@ class Estoque {
     if (error) throw erroSupabase(error, 'Erro ao registrar estoque');
     return { ...data, criado: true };
   }
+  /**
+   * Linhas de estoque (lotes NÃO vencidos) de um medicamento numa UBS,
+   * do lote que vence primeiro para o que vence depois (FEFO).
+   * Retorno: [{ id_estoque, quantidade, id_lote, lote, data_vencimento }]
+   */
+  static async lotesDisponiveis(idMedicamento, idUnidade) {
+    const { data, error } = await supabase
+      .from('estoque')
+      .select('id_estoque, quantidade, lote!inner(id_lote, lote, id_medicamento, data_vencimento)')
+      .eq('id_unidade', idUnidade)
+      .eq('lote.id_medicamento', idMedicamento)
+      .gte('lote.data_vencimento', hojeBrasilia());
+
+    if (error) throw erroSupabase(error, 'Erro ao consultar lotes do estoque');
+    return (data || [])
+      .map((l) => ({
+        id_estoque: l.id_estoque,
+        quantidade: Number(l.quantidade) || 0,
+        id_lote: l.lote.id_lote,
+        lote: l.lote.lote,
+        data_vencimento: String(l.lote.data_vencimento).slice(0, 10)
+      }))
+      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento) || a.id_estoque - b.id_estoque);
+  }
+
+  /** Grava a nova quantidade de uma linha de estoque (usado na saída) */
+  static async definirQuantidade(idEstoque, quantidade) {
+    const { error } = await supabase
+      .from('estoque')
+      .update({ quantidade })
+      .eq('id_estoque', idEstoque);
+    if (error) throw erroSupabase(error, 'Erro ao atualizar estoque');
+  }
 }
 
 Estoque.hojeBrasilia = hojeBrasilia;
