@@ -6,7 +6,9 @@ function hojeBrasilia() {
 }
 
 function erroSupabase(error, contexto) {
-  const e = new Error(`${contexto}: ${error.message}`);
+  // O Supabase às vezes devolve message vazio: junta código/detalhes/dica para o log ajudar.
+  const partes = [error.message, error.code, error.details, error.hint].filter(Boolean);
+  const e = new Error(`${contexto}: ${partes.join(' | ') || JSON.stringify(error)}`);
   e.codigoSupabase = error.code; // ex.: 23503 = chave estrangeira inexistente
   return e;
 }
@@ -137,23 +139,36 @@ class Estoque {
    * Retorno: [{ id_estoque, quantidade, id_lote, lote, data_vencimento }]
    */
   static async lotesDisponiveis(idMedicamento, idUnidade) {
+    // Mesma consulta de quantidadeDisponivel (que já funciona), só trazendo
+    // também a linha (id_estoque) e o lote (id_lote) de cada registro.
     const { data, error } = await supabase
       .from('estoque')
-      .select('id_estoque, quantidade, lote!inner(id_lote, lote, id_medicamento, data_vencimento)')
+      .select('id_estoque, id_lote, quantidade, lote!inner(id_medicamento, data_vencimento)')
       .eq('id_unidade', idUnidade)
       .eq('lote.id_medicamento', idMedicamento)
       .gte('lote.data_vencimento', hojeBrasilia());
 
     if (error) throw erroSupabase(error, 'Erro ao consultar lotes do estoque');
-    return (data || [])
-      .map((l) => ({
-        id_estoque: l.id_estoque,
-        quantidade: Number(l.quantidade) || 0,
-        id_lote: l.lote.id_lote,
-        lote: l.lote.lote,
-        data_vencimento: String(l.lote.data_vencimento).slice(0, 10)
-      }))
-      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento) || a.id_estoque - b.id_estoque);
+
+    const linhas = (data || []).map((l) => ({
+      id_estoque: l.id_estoque,
+      quantidade: Number(l.quantidade) || 0,
+      id_lote: l.id_lote,
+      lote: String(l.id_lote),
+      data_vencimento: String(l.lote?.data_vencimento ?? '').slice(0, 10)
+    }));
+
+    // Código do lote do fabricante (só para mostrar na tela; se falhar, fica o id)
+    const ids = [...new Set(linhas.map((l) => l.id_lote))];
+    if (ids.length) {
+      const { data: lotes } = await supabase.from('lote').select('id_lote, lote').in('id_lote', ids);
+      const codigo = new Map((lotes || []).map((x) => [x.id_lote, x.lote]));
+      linhas.forEach((l) => { if (codigo.get(l.id_lote)) l.lote = codigo.get(l.id_lote); });
+    }
+
+    return linhas.sort(
+      (a, b) => a.data_vencimento.localeCompare(b.data_vencimento) || a.id_estoque - b.id_estoque
+    );
   }
 
   /** Grava a nova quantidade de uma linha de estoque (usado na saída) */
