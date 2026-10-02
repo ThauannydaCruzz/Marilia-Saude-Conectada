@@ -14,6 +14,7 @@ import Mapa from "./components/HealthMap";
 import CadastroClientes from "./pages/CadastroClientes";
 import TermosDeUso from "./pages/TermosDeUso";
 import PrivateRoute from "./components/PrivateRoute";
+import GestaoEstoque from "./pages/GestaoEstoque";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,8 @@ const App = () => (
           <Route path="/mapa" element={ <PrivateRoute><Mapa /></PrivateRoute>} />
           <Route path="/profile" element={ <PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/termos-de-uso" element={<TermosDeUso />} /> {/* ✅ nova rota */}
+          {/* Gestão (UBS): entrada de estoque e avisos por WhatsApp. Sem login de funcionário ainda (demo). */}
+          <Route path="/gestao/estoque" element={<GestaoEstoque />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

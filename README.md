@@ -141,6 +141,20 @@ npm run dev
 Se faltar `SUPABASE_URL`/`SUPABASE_KEY` válidos, o backend do Cuida encerra sozinho
 com um erro claro no terminal.
 
+## Avisos de medicamento por WhatsApp (Cuida)
+
+Quem favorita um medicamento numa UBS recebe uma mensagem no WhatsApp (e e-mail, se configurado) quando esse medicamento **estava em falta** naquela UBS e a gestão registra a chegada de um lote.
+
+- **Tela da gestão:** `http://localhost:8081/gestao/estoque` (front do Cuida). Escolhe UBS e medicamento, mostra o estoque atual, registra o lote e acompanha os avisos por cidadão. Ainda sem login de funcionário (demo).
+- **Rota da gestão:** `POST /api/estoques/entrada` com `{ id_medicamento, id_unidade, quantidade, lote, data_vencimento: "AAAA-MM-DD" }`. Se o estoque (lotes dentro da validade) era 0, os favoritos são avisados sozinhos; a resposta traz `estoque_antes`, `estoque_depois` e `notificacao`.
+- **Acompanhar o aviso:** `GET /api/whatsapp/notificacoes/:id` (status por cidadão).
+- **Variáveis:** copie `apps/cuida/Back-End/src.env.example` para `src.env`. Com `WHATSAPP_MOCK=true` nada é enviado de verdade: a mensagem aparece no terminal do back-end.
+- **Envio real:** precisa da Evolution API rodando no Docker e de um WhatsApp conectado por QR code — passo a passo em `apps/cuida/Back-End/docs/WHATSAPP.md`.
+- **Testes:** `npm test --prefix apps/cuida/Back-End` (39 testes, sem WhatsApp nem Supabase).
+- **Proteção:** sem JWT neste monorepo, as rotas de WhatsApp e de entrada de estoque usam o header `x-api-key` quando `NOTIFICACAO_API_KEY` está preenchida. Preencha em qualquer ambiente acessível pela rede.
+
+Origem: portado de `github.com/Mattos-Soph/cuida_web_back_end` (branch `main`).
+
 ## Pendências que ficam com você
 
 - **URLs dos dois projetos Supabase** (`https://xxxx.supabase.co`) — só mandou as

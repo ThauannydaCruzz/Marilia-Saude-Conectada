@@ -2,6 +2,17 @@ const supabase = require('../db/database');
 const { v4: uuidv4 } = require('uuid'); // Certifique-se de ter o uuid importado se for usar no upload
 
 class Medicamento {
+  /** Lista resumida (id e nome) para selects da gestão */
+  static async listar() {
+    const { data, error } = await supabase
+      .from('medicamento')
+      .select('id_medicamento, nome, concentracao')
+      .order('nome', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
   static async getMedicamentos(id) {
     const { data, error } = await supabase
       .from('medicamento')

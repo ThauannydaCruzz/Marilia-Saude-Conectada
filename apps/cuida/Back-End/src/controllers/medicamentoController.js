@@ -1,5 +1,14 @@
 const Medicamento = require("../models/Medicamento");
 
+exports.listar = async (req, res) => {
+  try {
+    res.status(200).json(await Medicamento.listar());
+  } catch (err) {
+    console.error("Erro ao listar medicamentos:", err);
+    res.status(500).json({ error: "Erro ao listar medicamentos" });
+  }
+};
+
 exports.medicamento = async (req, res) => {
   try {
     const { id } = req.params;
