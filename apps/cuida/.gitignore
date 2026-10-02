@@ -1,2 +1,6 @@
 .env
 node_modules
+
+# Variáveis do back-end (chave service_role do Supabase): nunca no git
+Back-End/src.env
+Back-End/.env

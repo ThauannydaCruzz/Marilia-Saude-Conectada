@@ -6,6 +6,7 @@ const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+router.get("/listar", controller.listar);
 router.get("/get-medicamentos/:id", controller.medicamento);
 
 router.post('/medicamentos/upload-foto/:id', 

@@ -1,5 +1,9 @@
 // server.js
+const path = require('path');
+// O README do monorepo usa Back-End/src.env (era o que a linha original carregava,
+// por um detalhe do caminho). Carrega esse e também Back-End/.env, se existir.
 require('dotenv').config({ path: __dirname + '.env' });
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app = require("./app");
 

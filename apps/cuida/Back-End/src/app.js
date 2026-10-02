@@ -10,6 +10,7 @@ const estoqueRoutes     = require("./routes/estoqueRoutes");
 // Novas importações
 const favoritoRoutes    = require("./routes/favoritoRoutes");
 const pedidoRoutes      = require("./routes/pedidoRoutes");
+const whatsappRoutes    = require("./routes/whatsappRoutes");
 
 const app = express();
 
@@ -17,6 +18,9 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cors());
+
+// Verificação de saúde (usada para testar se o servidor está no ar)
+app.get("/api/health", (req, res) => res.json({ status: "ok", horario: new Date().toISOString() }));
   
 app.use("/api/clientes", clienteRoutes);
 app.use("/api/unidades", unidadeRoutes);
@@ -26,5 +30,6 @@ app.use("/api/estoques", estoqueRoutes);
 // Novas rotas
 app.use("/api/favoritos", favoritoRoutes);
 app.use("/api/pedidos", pedidoRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 
 module.exports = app;
