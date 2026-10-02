@@ -151,4 +151,67 @@ async function avisarSeReabasteceu(d, antes, depois, { Favorito, fila }) {
   }
 }
 
-module.exports = { darEntrada, validarEntrada, ErroEntrada };
+// ---------------------------------------------------------------------------
+// Saída (dispensação / baixa) — tira dos lotes que vencem primeiro (FEFO)
+// ---------------------------------------------------------------------------
+
+/** Valida o body da saída. Lança ErroEntrada(400) com todos os problemas. */
+function validarSaida(body) {
+  const b = body || {};
+  const erros = [];
+  const id_medicamento = inteiroPositivo(b.id_medicamento);
+  const id_unidade = inteiroPositivo(b.id_unidade);
+  const quantidade = inteiroPositivo(b.quantidade);
+
+  if (!id_medicamento) erros.push('id_medicamento deve ser um inteiro positivo');
+  if (!id_unidade) erros.push('id_unidade deve ser um inteiro positivo');
+  if (!quantidade) erros.push('quantidade deve ser um inteiro maior que zero');
+  else if (quantidade > 1000000) erros.push('quantidade acima do limite (1.000.000)');
+
+  if (erros.length) throw Object.assign(new ErroEntrada(400, 'DADOS_INVALIDOS', 'Dados inválidos.'), { erros });
+  return { id_medicamento, id_unidade, quantidade };
+}
+
+/**
+ * Saída de estoque (dispensação, perda, transferência).
+ * Baixa dos lotes NÃO vencidos, do que vence primeiro para o que vence depois.
+ * Não dispara aviso: avisos só saem quando o remédio volta a ter estoque.
+ *
+ * @param {object} body  { id_medicamento, id_unidade, quantidade }
+ * @param {object} deps  injeção para testes: { Estoque }
+ */
+async function darSaida(body, deps = {}) {
+  const Estoque = deps.Estoque || require('../models/Estoque');
+  const d = validarSaida(body);
+
+  const lotes = await Estoque.lotesDisponiveis(d.id_medicamento, d.id_unidade); // já ordenados por vencimento
+  const antes = lotes.reduce((s, l) => s + (Number(l.quantidade) || 0), 0);
+
+  if (d.quantidade > antes) {
+    throw Object.assign(
+      new ErroEntrada(409, 'ESTOQUE_INSUFICIENTE', `Só há ${antes} unidade(s) disponível(is) nessa UBS.`),
+      { erros: [`quantidade pedida (${d.quantidade}) maior que o disponível (${antes})`] }
+    );
+  }
+
+  let falta = d.quantidade;
+  const baixas = [];
+  for (const l of lotes) {
+    if (falta <= 0) break;
+    const atual = Number(l.quantidade) || 0;
+    if (atual <= 0) continue;
+    const tirar = Math.min(atual, falta);
+    await Estoque.definirQuantidade(l.id_estoque, atual - tirar);
+    baixas.push({ id_lote: l.id_lote, lote: l.lote, data_vencimento: l.data_vencimento, quantidade: tirar });
+    falta -= tirar;
+  }
+
+  const depois = antes - d.quantidade;
+  log.info('estoque.saida', {
+    id_medicamento: d.id_medicamento, id_unidade: d.id_unidade, quantidade: d.quantidade, antes, depois
+  });
+
+  return { estoque_antes: antes, estoque_depois: depois, baixas };
+}
+
+module.exports = { darEntrada, validarEntrada, darSaida, validarSaida, ErroEntrada };

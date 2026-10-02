@@ -65,6 +65,9 @@ try {
 }
 
 const unidades = normalizeArray(unidadesResponse);
+
+// Hoje (AAAA-MM-DD) no fuso de Brasília — lote com vencimento antes disso não conta.
+const HOJE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 const estoque = normalizeArray(estoqueResponse);
 
 export const healthUnits: HealthUnit[] = unidades.map(
@@ -73,14 +76,28 @@ export const healthUnits: HealthUnit[] = unidades.map(
       (item: any) => item.id_unidade === unit.id
     );
 
-    const medications = estoqueDaUnidade
-      .map((itemEstoque: any, medIndex: number) => {
-        const medInfo = itemEstoque.lote?.medicamento;
+    // Cada linha de estoque é UM LOTE. Aqui juntamos os lotes do mesmo
+    // medicamento e somamos só os que estão dentro da validade — a mesma
+    // conta que o back-end faz para decidir se manda o aviso de "chegou".
+    // Medicamento com tudo zerado (ou vencido) continua na lista com
+    // quantity 0: é ele que aparece como "Em falta" no mapa.
+    const porMedicamento = new Map<number, { medInfo: any; quantity: number }>();
 
-        if (!medInfo) return null;
+    estoqueDaUnidade.forEach((itemEstoque: any) => {
+      const medInfo = itemEstoque.lote?.medicamento;
+      if (!medInfo) return;
 
-        const quantity = Number(itemEstoque.quantidade) || 0;
+      const vencimento = String(itemEstoque.lote?.data_vencimento ?? "").slice(0, 10);
+      const vencido = vencimento !== "" && vencimento < HOJE;
+      const qtd = vencido ? 0 : Number(itemEstoque.quantidade) || 0;
 
+      const atual = porMedicamento.get(medInfo.id_medicamento);
+      if (atual) atual.quantity += qtd;
+      else porMedicamento.set(medInfo.id_medicamento, { medInfo, quantity: qtd });
+    });
+
+    const medications = Array.from(porMedicamento.values())
+      .map(({ medInfo, quantity }) => {
         const minStock = 50;
         const maxStock = 100;
 
@@ -117,7 +134,7 @@ export const healthUnits: HealthUnit[] = unidades.map(
           interests: 0,
         };
       })
-      .filter(Boolean) as any[];
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
 
     let type:
       | "UBS"

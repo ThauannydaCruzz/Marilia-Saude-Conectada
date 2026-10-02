@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Loader2, PackagePlus, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, PackageMinus, PackagePlus, Send } from "lucide-react";
 
 import cuidaLogo from "@/assets/cuida-logo.png";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   buscarLoteNotificacao,
   consultarEstoqueDisponivel,
   darEntradaEstoque,
+  darSaidaEstoque,
   EntradaEstoqueResposta,
   ItemNotificacao,
   listarMedicamentos,
@@ -23,6 +24,7 @@ import {
   MedicamentoResumo,
   mensagemDeErro,
   MotivoSemAviso,
+  SaidaEstoqueResposta,
   STATUS_FINAIS,
   UnidadeResumo,
 } from "@/services/gestaoEstoque";
@@ -66,7 +68,10 @@ const CODIGOS: Record<string, string> = {
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
+type Modo = "entrada" | "saida";
+
 const GestaoEstoque = () => {
+  const [modo, setModo] = useState<Modo>("entrada");
   const [unidades, setUnidades] = useState<UnidadeResumo[]>([]);
   const [medicamentos, setMedicamentos] = useState<MedicamentoResumo[]>([]);
   const [erroListas, setErroListas] = useState<string | null>(null);
@@ -83,6 +88,8 @@ const GestaoEstoque = () => {
   const [erro, setErro] = useState<{ titulo: string; detalhes: string[] } | null>(null);
   const [resultado, setResultado] = useState<EntradaEstoqueResposta | null>(null);
   const [loteAviso, setLoteAviso] = useState<LoteNotificacao | null>(null);
+  const [resultadoSaida, setResultadoSaida] = useState<SaidaEstoqueResposta | null>(null);
+  const [saidaInfo, setSaidaInfo] = useState<{ medicamento: string; unidade: string } | null>(null);
 
   // Listas dos selects
   useEffect(() => {
@@ -101,7 +108,7 @@ const GestaoEstoque = () => {
     consultarEstoqueDisponivel(Number(idMedicamento), Number(idUnidade))
       .then(setEstoqueAtual)
       .catch(() => setEstoqueAtual(null));
-  }, [idUnidade, idMedicamento, resultado]);
+  }, [idUnidade, idMedicamento, resultado, resultadoSaida]);
 
   // Acompanhamento do aviso (consulta a cada 2 s até terminar)
   const idLoteAviso = resultado?.notificacao.disparada ? resultado.notificacao.id_lote_notificacao : null;
@@ -135,15 +142,38 @@ const GestaoEstoque = () => {
     [unidades, idUnidade],
   );
 
-  const podeEnviar = idUnidade && idMedicamento && Number(quantidade) > 0 && lote.trim() && vencimento && !enviando;
+  const podeEnviar =
+    !!idUnidade &&
+    !!idMedicamento &&
+    Number(quantidade) > 0 &&
+    !enviando &&
+    (modo === "saida"
+      ? estoqueAtual !== null && estoqueAtual > 0 && Number(quantidade) <= estoqueAtual
+      : !!lote.trim() && !!vencimento);
+
+  const trocarModo = (m: Modo) => {
+    setModo(m);
+    setErro(null);
+  };
 
   const registrar = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setErro(null);
     setResultado(null);
     setLoteAviso(null);
+    setResultadoSaida(null);
     setEnviando(true);
     try {
+      if (modo === "saida") {
+        const r = await darSaidaEstoque({
+          id_medicamento: Number(idMedicamento),
+          id_unidade: Number(idUnidade),
+          quantidade: Number(quantidade),
+        });
+        setSaidaInfo({ medicamento: nomeMedicamento, unidade: nomeUnidade });
+        setResultadoSaida(r);
+        return;
+      }
       const r = await darEntradaEstoque({
         id_medicamento: Number(idMedicamento),
         id_unidade: Number(idUnidade),
@@ -170,7 +200,7 @@ const GestaoEstoque = () => {
             <img src={cuidaLogo} alt="CUIDA" className="w-10 h-10 rounded-lg" />
             <div>
               <h1 className="text-xl font-bold text-primary">CUIDA · Gestão</h1>
-              <p className="text-xs text-muted-foreground">Entrada de estoque nas UBS</p>
+              <p className="text-xs text-muted-foreground">Entrada e saída de estoque nas UBS</p>
             </div>
           </div>
           <Button variant="ghost" asChild>
@@ -185,11 +215,43 @@ const GestaoEstoque = () => {
         {/* ------------------------------------------------ Formulário */}
         <Card>
           <CardHeader>
+            <div className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="tablist">
+              <Button
+                type="button"
+                role="tab"
+                aria-selected={modo === "entrada"}
+                variant={modo === "entrada" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => trocarModo("entrada")}
+              >
+                <PackagePlus className="w-4 h-4 mr-1.5" /> Entrada
+              </Button>
+              <Button
+                type="button"
+                role="tab"
+                aria-selected={modo === "saida"}
+                variant={modo === "saida" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => trocarModo("saida")}
+              >
+                <PackageMinus className="w-4 h-4 mr-1.5" /> Saída
+              </Button>
+            </div>
             <CardTitle className="flex items-center gap-2">
-              <PackagePlus className="w-5 h-5 text-primary" /> Registrar chegada de lote
+              {modo === "entrada" ? (
+                <>
+                  <PackagePlus className="w-5 h-5 text-primary" /> Registrar chegada de lote
+                </>
+              ) : (
+                <>
+                  <PackageMinus className="w-5 h-5 text-primary" /> Registrar saída
+                </>
+              )}
             </CardTitle>
             <CardDescription>
-              Se o medicamento estava em falta nesta UBS, quem o favoritou é avisado pelo WhatsApp.
+              {modo === "entrada"
+                ? "Se o medicamento estava em falta nesta UBS, quem o favoritou é avisado pelo WhatsApp."
+                : "Dispensação, perda ou transferência. Sai primeiro do lote que vence antes."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,37 +295,73 @@ const GestaoEstoque = () => {
                 {estoqueAtual !== null && (
                   <p className={`text-sm ${estoqueAtual === 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                     Estoque atual nesta UBS: {estoqueAtual}
-                    {estoqueAtual === 0 ? " (em falta: a entrada vai avisar quem favoritou)" : ""}
+                    {estoqueAtual === 0
+                      ? modo === "entrada"
+                        ? " (em falta: a entrada vai avisar quem favoritou)"
+                        : " (em falta: não há o que dar saída)"
+                      : ""}
                   </p>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="quantidade">Quantidade</Label>
-                  <Input id="quantidade" type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vencimento">Vencimento</Label>
-                  <Input id="vencimento" type="date" min={hoje()} value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
-                </div>
-              </div>
+              {modo === "entrada" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="quantidade">Quantidade</Label>
+                      <Input id="quantidade" type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vencimento">Vencimento</Label>
+                      <Input id="vencimento" type="date" min={hoje()} value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="lote">Código do lote</Label>
-                <Input id="lote" placeholder="ex.: ABC123" maxLength={50} value={lote} onChange={(e) => setLote(e.target.value)} />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lote">Código do lote</Label>
+                    <Input id="lote" placeholder="ex.: ABC123" maxLength={50} value={lote} onChange={(e) => setLote(e.target.value)} />
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <Checkbox id="notificar" checked={notificar} onCheckedChange={(v) => setNotificar(v === true)} />
-                <Label htmlFor="notificar" className="font-normal">
-                  Avisar quem favoritou, se estava em falta
-                </Label>
-              </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="notificar" checked={notificar} onCheckedChange={(v) => setNotificar(v === true)} />
+                    <Label htmlFor="notificar" className="font-normal">
+                      Avisar quem favoritou, se estava em falta
+                    </Label>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="quantidade">Quantidade que saiu</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="quantidade"
+                      type="number"
+                      min={1}
+                      max={estoqueAtual ?? undefined}
+                      value={quantidade}
+                      onChange={(e) => setQuantidade(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!estoqueAtual}
+                      onClick={() => setQuantidade(String(estoqueAtual ?? 0))}
+                    >
+                      Tudo{estoqueAtual ? ` (${estoqueAtual})` : ""}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={!podeEnviar}>
-                {enviando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                Registrar entrada
+                {enviando ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : modo === "entrada" ? (
+                  <Send className="w-4 h-4 mr-2" />
+                ) : (
+                  <PackageMinus className="w-4 h-4 mr-2" />
+                )}
+                {modo === "entrada" ? "Registrar entrada" : "Registrar saída"}
               </Button>
 
               {erro && (
@@ -284,10 +382,53 @@ const GestaoEstoque = () => {
 
         {/* ------------------------------------------------ Resultado */}
         <div className="space-y-6">
-          {!resultado && (
+          {!resultado && !resultadoSaida && (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground">
                 Registre uma entrada para ver o estoque atualizado e o envio dos avisos.
+              </CardContent>
+            </Card>
+          )}
+
+          {resultadoSaida && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-primary" /> Saída registrada
+                </CardTitle>
+                <CardDescription>
+                  {saidaInfo?.medicamento} · {saidaInfo?.unidade}
+                  {resultadoSaida.baixas.length > 0 &&
+                    ` · lote${resultadoSaida.baixas.length > 1 ? "s" : ""} ${resultadoSaida.baixas
+                      .map((b) => `${b.lote} (−${b.quantidade})`)
+                      .join(", ")}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Antes</p>
+                    <p className="text-2xl font-bold">{resultadoSaida.estoque_antes}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Saída</p>
+                    <p className="text-2xl font-bold">
+                      −{resultadoSaida.estoque_antes - resultadoSaida.estoque_depois}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Agora</p>
+                    <p className={`text-2xl font-bold ${resultadoSaida.estoque_depois === 0 ? "text-destructive" : "text-primary"}`}>
+                      {resultadoSaida.estoque_depois}
+                    </p>
+                  </div>
+                </div>
+                {resultadoSaida.estoque_depois === 0 && (
+                  <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                    O medicamento ficou em falta nesta UBS. No mapa, ele aparece em "Em falta" e os cidadãos podem
+                    tocar em <strong>Avise-me</strong>. Na próxima entrada, todos que pediram são avisados.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

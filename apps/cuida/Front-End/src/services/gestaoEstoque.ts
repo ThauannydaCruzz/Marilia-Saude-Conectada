@@ -24,6 +24,20 @@ export interface EntradaEstoquePayload {
   notificar?: boolean;     // padrão: true
 }
 
+export interface SaidaEstoquePayload {
+  id_medicamento: number;
+  id_unidade: number;
+  quantidade: number;
+}
+
+export interface SaidaEstoqueResposta {
+  success: true;
+  estoque_antes: number;
+  estoque_depois: number;
+  /** De quais lotes saiu (o que vence primeiro sai primeiro) */
+  baixas: { id_lote: number; lote: string; data_vencimento: string; quantidade: number }[];
+}
+
 export type MotivoSemAviso =
   | "JA_HAVIA_ESTOQUE"
   | "SEM_INTERESSADOS"
@@ -107,6 +121,11 @@ export async function darEntradaEstoque(dados: EntradaEstoquePayload): Promise<E
   return data;
 }
 
+export async function darSaidaEstoque(dados: SaidaEstoquePayload): Promise<SaidaEstoqueResposta> {
+  const { data } = await api.post<SaidaEstoqueResposta>("/estoques/saida", dados);
+  return data;
+}
+
 export async function buscarLoteNotificacao(id: string): Promise<LoteNotificacao> {
   const { data } = await api.get<{ success: boolean; lote: LoteNotificacao }>(`/whatsapp/notificacoes/${id}`);
   return data.lote;
@@ -130,6 +149,7 @@ export function mensagemDeErro(e: unknown): { titulo: string; detalhes: string[]
     MEDICAMENTO_INEXISTENTE: "Medicamento não encontrado.",
     UNIDADE_INEXISTENTE: "Unidade não encontrada.",
     LOTE_VENCIMENTO_DIVERGENTE: "Esse código de lote já existe com outra data de vencimento.",
+    ESTOQUE_INSUFICIENTE: "Não há essa quantidade disponível nesta UBS.",
   };
   return {
     titulo: (codigo && titulos[codigo]) || error || `Erro ${resp.status ?? ""}`.trim(),

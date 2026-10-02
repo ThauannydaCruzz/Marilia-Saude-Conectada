@@ -18,6 +18,7 @@ const extractId = (val: any): number => {
 };
 
 const getStockLevel = (quantity: number) => {
+    if (!(quantity > 0)) return { label: 'Em falta', variant: 'destructive' as const };
     if (quantity > 15) return { label: 'Estoque Alto', variant: 'default' as const };
     if (quantity <= 15) return { label: 'Estoque Baixo', variant: 'destructive' as const };
     return { label: 'Estoque Médio', variant: 'secondary' as const };

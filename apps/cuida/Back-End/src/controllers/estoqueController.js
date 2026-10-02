@@ -1,5 +1,5 @@
 const Estoque = require('../models/Estoque');
-const { darEntrada, ErroEntrada } = require('../services/estoqueService');
+const { darEntrada, darSaida, ErroEntrada } = require('../services/estoqueService');
 const log = require('../utils/logger');
 
 exports.estoque = async (req, res) => {
@@ -49,5 +49,24 @@ exports.entrada = async (req, res) => {
     }
     log.error('estoque.entrada_falhou', { erro: err.message });
     return res.status(500).json({ success: false, codigo: 'ERRO_INTERNO', error: 'Falha ao registrar entrada de estoque.' });
+  }
+};
+
+/**
+ * Saída de estoque (uso da gestão/UBS): dispensação, perda, transferência.
+ * POST /api/estoques/saida
+ * Body: { id_medicamento, id_unidade, quantidade }
+ * Baixa dos lotes que vencem primeiro. 409 ESTOQUE_INSUFICIENTE se pedir mais do que há.
+ */
+exports.saida = async (req, res) => {
+  try {
+    const resultado = await darSaida(req.body);
+    return res.status(200).json({ success: true, ...resultado });
+  } catch (err) {
+    if (err instanceof ErroEntrada) {
+      return res.status(err.status).json({ success: false, codigo: err.codigo, error: err.message, erros: err.erros });
+    }
+    log.error('estoque.saida_falhou', { erro: err.message });
+    return res.status(500).json({ success: false, codigo: 'ERRO_INTERNO', error: 'Falha ao registrar saída de estoque.' });
   }
 };
