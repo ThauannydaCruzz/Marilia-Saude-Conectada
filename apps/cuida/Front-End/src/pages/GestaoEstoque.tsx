@@ -147,7 +147,9 @@ const GestaoEstoque = () => {
     !!idMedicamento &&
     Number(quantidade) > 0 &&
     !enviando &&
-    (modo === "saida" ? true : !!lote.trim() && !!vencimento);
+    (modo === "saida"
+      ? estoqueAtual !== null && estoqueAtual > 0 && Number(quantidade) <= estoqueAtual
+      : !!lote.trim() && !!vencimento);
 
   const trocarModo = (m: Modo) => {
     setModo(m);
